@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 const USERS = {
-  'jordan@jmediaproductions.com':{ password:'jmedia2026', role:'admin',  name:'Jordan' },
+'info@j-mediaproductions.com':{ password:'Tench!468522477', role:'admin', name:'Jordan' },
   'maria@vinoy.com':             { password:'vinoy2026',  role:'client', name:'Maria Rodriguez', clientId:'vinoy' },
   'david@surfcomber.com':        { password:'surf2026',   role:'client', name:'David Kim',       clientId:'surfcomber' },
   'sandra@biltmore.com':         { password:'bilt2026',   role:'client', name:'Sandra Okafor',   clientId:'biltmore' },
