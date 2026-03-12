@@ -1,0 +1,19 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  background: #07070F;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+:root {
+  --brand-primary: #E8625A;
+  --brand-secondary: #333333;
+  --brand-font: 'Inter', sans-serif;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+input, select, button, textarea { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&family=Montserrat:wght@400;600;700&family=Cormorant+Garamond:wght@500;600&display=swap');
