@@ -6,6 +6,133 @@ import AnimatedSparkline from '../shared/AnimatedSparkline';
 import AnimatedBar from '../shared/AnimatedBar';
 import StatusBadge from '../shared/StatusBadge';
 
+function InvoiceRow({ inv, client, accent, isLast }) {
+  const [paying, setPaying] = useState(false);
+  const [payMethod, setPayMethod] = useState(null);
+
+  const handleCardPay = async () => {
+    setPaying(true);
+    try {
+      const r = await fetch('/api/square-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: inv.amount,
+          clientName: client.name,
+          invoiceNumber: inv.number,
+          clientEmail: client.email,
+        }),
+      });
+      const data = await r.json();
+      if (data.mock) {
+        alert('Square not configured yet — add SQUARE_ACCESS_TOKEN to Vercel.');
+        return;
+      }
+      if (data.checkoutUrl) {
+        window.open(data.checkoutUrl, '_blank');
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (err) {
+      alert('Something went wrong. Please try again.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div style={{ padding:'20px 22px', borderBottom:isLast?'none':'1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom: inv.status !== 'paid' ? 16 : 0 }}>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700 }}>{inv.number}</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>Issued {inv.issueDate} · Due {inv.dueDate}</div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:18, fontWeight:800 }}>${inv.amount.toLocaleString()}</div>
+          <StatusBadge status={inv.status}/>
+        </div>
+      </div>
+
+      {inv.status !== 'paid' && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          {/* ACH Tile */}
+          <div
+            onClick={() => setPayMethod(payMethod === 'ach' ? null : 'ach')}
+            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod === 'ach' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background: payMethod === 'ach' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
+          >
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+              <span style={{ fontSize:18 }}>🏦</span>
+              <div>
+                <div style={{ fontSize:12, fontWeight:700 }}>ACH Bank Transfer</div>
+                <div style={{ fontSize:10, color:'#4CAF50', fontWeight:600 }}>No fees</div>
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>Wire directly from your bank — recommended for retainers</div>
+          </div>
+
+          {/* Card Tile */}
+          <div
+            onClick={() => setPayMethod(payMethod === 'card' ? null : 'card')}
+            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod === 'card' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background: payMethod === 'card' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
+          >
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+              <span style={{ fontSize:18 }}>💳</span>
+              <div>
+                <div style={{ fontSize:12, fontWeight:700 }}>Credit / Debit Card</div>
+                <div style={{ fontSize:10, color:'#FFA500', fontWeight:600 }}>~2.6% fee applies</div>
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>Instant payment via Square secure checkout</div>
+          </div>
+
+          {/* ACH Expanded */}
+          {payMethod === 'ach' && (
+            <div style={{ gridColumn:'1 / -1', padding:'16px 18px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', marginBottom:12 }}>ACH Transfer Details</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:14 }}>
+                {[
+                  { label:'Bank',           value:'Mercury' },
+                  { label:'Account Name',   value:'JMEDIA Productions LLC' },
+                  { label:'Routing Number', value:process.env.NEXT_PUBLIC_ROUTING || '—' },
+                  { label:'Account Number', value:process.env.NEXT_PUBLIC_ACCOUNT || '—' },
+                ].map((f,i) => (
+                  <div key={i}>
+                    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:4 }}>{f.label}</div>
+                    <div style={{ fontSize:13, fontWeight:600, fontFamily:'monospace' }}>{f.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding:'10px 14px', background:`${accent}10`, border:`1px solid ${accent}30`, borderRadius:10, fontSize:11, color:'rgba(255,255,255,0.6)' }}>
+                📋 Use <strong style={{ color:'#fff' }}>{inv.number}</strong> as the memo/reference so we can match your payment
+              </div>
+            </div>
+          )}
+
+          {/* Card Expanded */}
+          {payMethod === 'card' && (
+            <div style={{ gridColumn:'1 / -1', padding:'16px 18px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:14, lineHeight:1.6 }}>
+                You'll be taken to a secure Square checkout page. Your card details are handled directly by Square — JMEDIA never sees your card number.
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, padding:'10px 14px', background:'rgba(255,165,0,0.08)', border:'1px solid rgba(255,165,0,0.2)', borderRadius:10 }}>
+                <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>Total with processing fee (~2.6%)</span>
+                <span style={{ fontSize:14, fontWeight:800, color:'#FFA500' }}>${(inv.amount * 1.026).toLocaleString(undefined, {maximumFractionDigits:0})}</span>
+              </div>
+              <button
+                onClick={handleCardPay}
+                disabled={paying}
+                style={{ width:'100%', background:`linear-gradient(145deg, ${accent}, ${accent}bb)`, border:'none', color:'#fff', padding:'12px 20px', borderRadius:12, fontSize:13, fontWeight:700, cursor:paying?'not-allowed':'pointer', fontFamily:'Inter,sans-serif', opacity:paying?0.7:1, boxShadow:`0 4px 16px ${accent}40` }}
+              >
+                {paying ? 'Opening checkout...' : `Pay $${(inv.amount * 1.026).toLocaleString(undefined, {maximumFractionDigits:0})} via Square →`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
   const [tab, setTab] = useState(defaultTab);
   const client = CLIENTS[clientId] || CLIENTS.vinoy;
@@ -15,7 +142,6 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
   const directChange = Math.round(((client.directBookings - client.directLast) / client.directLast) * 100);
   const trafficChange = Math.round(((client.websiteTraffic - client.websiteTrafficLast) / client.websiteTrafficLast) * 100);
 
-  // Sync tab when navigating via sidebar/bottom nav
   useEffect(() => { setTab(defaultTab); }, [defaultTab]);
 
   return (
@@ -33,15 +159,13 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
         }
       `}</style>
 
-      {/* ── DASHBOARD TAB ── */}
+      {/* DASHBOARD */}
       {tab === 'dashboard' && (
         <>
           <div style={{ marginBottom:26 }}>
             <div style={{ fontSize:26, fontWeight:800, letterSpacing:'-0.02em' }}>Welcome back, {client.contact.split(' ')[0]} 👋</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,0.32)', marginTop:6 }}>Here's your overview for March 2026</div>
           </div>
-
-          {/* Hero */}
           <div style={{ ...glass, background:`linear-gradient(135deg, ${accent}18 0%, rgba(255,255,255,0.04) 60%)`, border:`1px solid ${accent}35`, padding:'28px 32px', marginBottom:22 }}>
             <div style={{ display:'flex', alignItems:'center', gap:40, flexWrap:'wrap' }}>
               <div>
@@ -68,8 +192,6 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
               </div>
             </div>
           </div>
-
-          {/* KPI Cards */}
           <div className="client-kpi-grid">
             {[
               { label:'Content Delivered', value:client.contentDelivered, suffix:'',  color:'#fff',    sub:`of ${client.contentPlanned} planned` },
@@ -84,8 +206,6 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
               </div>
             ))}
           </div>
-
-          {/* Next Shoot + Invoices */}
           <div className="client-two-col">
             <div style={{ ...glass, background:`linear-gradient(135deg, ${accent}0F 0%, rgba(255,255,255,0.03) 100%)`, border:`1px solid ${accent}28`, padding:24 }}>
               <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:accent, marginBottom:16 }}>Next Shoot</div>
@@ -110,7 +230,6 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
                 ))}
               </div>
             </div>
-
             <div style={{ ...glass, overflow:'hidden' }}>
               <div style={{ padding:'16px 22px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.7)' }}>Invoice History</span>
@@ -126,14 +245,19 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
                 </div>
               ))}
               <div style={{ padding:'14px 22px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                <button style={{ width:'100%', background:`linear-gradient(145deg, ${accent}, ${accent}bb)`, border:'none', color:'#fff', padding:10, borderRadius:12, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, boxShadow:`0 4px 16px ${accent}40` }}>Pay Current Invoice →</button>
+                <button
+                  onClick={() => setTab('invoices')}
+                  style={{ width:'100%', background:`linear-gradient(145deg, ${accent}, ${accent}bb)`, border:'none', color:'#fff', padding:10, borderRadius:12, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, boxShadow:`0 4px 16px ${accent}40` }}
+                >
+                  View All Invoices →
+                </button>
               </div>
             </div>
           </div>
         </>
       )}
 
-      {/* ── CONTENT TAB ── */}
+      {/* CONTENT */}
       {tab === 'content' && (
         <>
           <div style={{ marginBottom:24 }}>
@@ -163,7 +287,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
         </>
       )}
 
-      {/* ── PERFORMANCE TAB ── */}
+      {/* PERFORMANCE */}
       {tab === 'performance' && (
         <>
           <div style={{ marginBottom:24 }}>
@@ -204,7 +328,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
         </>
       )}
 
-      {/* ── SHOOTS TAB ── */}
+      {/* SHOOTS */}
       {tab === 'shoots' && (
         <>
           <div style={{ marginBottom:24 }}>
@@ -254,7 +378,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
         </>
       )}
 
-      {/* ── INVOICES TAB ── */}
+      {/* INVOICES */}
       {tab === 'invoices' && (
         <>
           <div style={{ marginBottom:24 }}>
@@ -274,22 +398,14 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             ))}
           </div>
           <div style={{ ...glass, overflow:'hidden' }}>
-            {invoices.map((inv,i) => (
-              <div key={inv.id} style={{ padding:'18px 22px', borderBottom:i<invoices.length-1?'1px solid rgba(255,255,255,0.05)':'none' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:700 }}>{inv.number}</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{inv.issueDate} · Due {inv.dueDate}</div>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <div style={{ fontSize:18, fontWeight:800 }}>${inv.amount.toLocaleString()}</div>
-                    <StatusBadge status={inv.status}/>
-                  </div>
-                </div>
-                {inv.status !== 'paid' && (
-                  <button style={{ marginTop:10, background:`linear-gradient(145deg, ${accent}, ${accent}bb)`, border:'none', color:'#fff', padding:'8px 20px', borderRadius:10, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>Pay Now →</button>
-                )}
-              </div>
+            {invoices.map((inv, i) => (
+              <InvoiceRow
+                key={inv.id}
+                inv={inv}
+                client={client}
+                accent={accent}
+                isLast={i === invoices.length - 1}
+              />
             ))}
           </div>
         </>
