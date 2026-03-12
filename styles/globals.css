@@ -17,3 +17,27 @@ body {
 input, select, button, textarea { font-family: inherit; }
 a { text-decoration: none; color: inherit; }
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&family=Montserrat:wght@400;600;700&family=Cormorant+Garamond:wght@500;600&display=swap');
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+
+  /* Hide sidebar, show top bar only */
+  aside {
+    display: none !important;
+  }
+
+  /* Full width main */
+  main {
+    width: 100vw !important;
+  }
+
+  /* Stack all grids to single column */
+  [style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Reduce padding */
+  [style*="padding: 28"] {
+    padding: 16px !important;
+  }
+}
