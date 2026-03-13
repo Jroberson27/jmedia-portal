@@ -9,6 +9,18 @@ import StatusBadge from '../shared/StatusBadge';
 function InvoiceRow({ inv, client, accent, isLast }) {
   const [paying, setPaying] = useState(false);
   const [payMethod, setPayMethod] = useState(null);
+  const [achDetails, setAchDetails] = useState(null);
+
+  const loadAchDetails = async () => {
+    if (achDetails) return;
+    try {
+      const r = await fetch('/api/ach-details');
+      const data = await r.json();
+      setAchDetails(data);
+    } catch {
+      setAchDetails({ bank: 'Mercury', accountName: 'JMEDIA Productions LLC', routing: '—', account: '—' });
+    }
+  };
 
   const handleCardPay = async () => {
     setPaying(true);
@@ -42,7 +54,7 @@ function InvoiceRow({ inv, client, accent, isLast }) {
 
   return (
     <div style={{ padding:'20px 22px', borderBottom:isLast?'none':'1px solid rgba(255,255,255,0.05)' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom: inv.status !== 'paid' ? 16 : 0 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, marginBottom:inv.status !== 'paid' ? 16 : 0 }}>
         <div>
           <div style={{ fontSize:13, fontWeight:700 }}>{inv.number}</div>
           <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>Issued {inv.issueDate} · Due {inv.dueDate}</div>
@@ -55,10 +67,15 @@ function InvoiceRow({ inv, client, accent, isLast }) {
 
       {inv.status !== 'paid' && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+
           {/* ACH Tile */}
           <div
-            onClick={() => setPayMethod(payMethod === 'ach' ? null : 'ach')}
-            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod === 'ach' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background: payMethod === 'ach' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
+            onClick={() => {
+              const next = payMethod === 'ach' ? null : 'ach';
+              setPayMethod(next);
+              if (next === 'ach') loadAchDetails();
+            }}
+            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod==='ach' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background:payMethod==='ach' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
           >
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
               <span style={{ fontSize:18 }}>🏦</span>
@@ -73,7 +90,7 @@ function InvoiceRow({ inv, client, accent, isLast }) {
           {/* Card Tile */}
           <div
             onClick={() => setPayMethod(payMethod === 'card' ? null : 'card')}
-            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod === 'card' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background: payMethod === 'card' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
+            style={{ padding:'14px 16px', borderRadius:14, border:`1px solid ${payMethod==='card' ? accent+'60' : 'rgba(255,255,255,0.1)'}`, background:payMethod==='card' ? `${accent}0A` : 'rgba(255,255,255,0.03)', cursor:'pointer', transition:'all 0.2s' }}
           >
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
               <span style={{ fontSize:18 }}>💳</span>
@@ -91,10 +108,10 @@ function InvoiceRow({ inv, client, accent, isLast }) {
               <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', marginBottom:12 }}>ACH Transfer Details</div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:14 }}>
                 {[
-                  { label:'Bank',           value:'Mercury' },
-                  { label:'Account Name',   value:'JMEDIA Productions LLC' },
-                  { label:'Routing Number', value:process.env.NEXT_PUBLIC_ROUTING || '—' },
-                  { label:'Account Number', value:process.env.NEXT_PUBLIC_ACCOUNT || '—' },
+                  { label:'Bank',           value: achDetails?.bank || '...' },
+                  { label:'Account Name',   value: achDetails?.accountName || '...' },
+                  { label:'Routing Number', value: achDetails?.routing || '...' },
+                  { label:'Account Number', value: achDetails?.account || '...' },
                 ].map((f,i) => (
                   <div key={i}>
                     <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:4 }}>{f.label}</div>
@@ -127,6 +144,7 @@ function InvoiceRow({ inv, client, accent, isLast }) {
               </button>
             </div>
           )}
+
         </div>
       )}
     </div>
@@ -147,15 +165,15 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
   return (
     <div style={{ color:'#fff', fontFamily:FONT }}>
       <style>{`
-        .client-kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 22px; }
-        .client-two-col  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
-        .client-content-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; padding: 22px; }
-        .perf-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 22px; }
-        @media (max-width: 768px) {
-          .client-kpi-grid  { grid-template-columns: repeat(2,1fr) !important; }
-          .client-two-col   { grid-template-columns: 1fr !important; }
-          .client-content-grid { grid-template-columns: repeat(2,1fr) !important; padding: 14px !important; }
-          .perf-grid { grid-template-columns: 1fr !important; }
+        .client-kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px; }
+        .client-two-col  { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px; }
+        .client-content-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:22px; }
+        .perf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px; }
+        @media (max-width:768px) {
+          .client-kpi-grid  { grid-template-columns:repeat(2,1fr) !important; }
+          .client-two-col   { grid-template-columns:1fr !important; }
+          .client-content-grid { grid-template-columns:repeat(2,1fr) !important; padding:14px !important; }
+          .perf-grid { grid-template-columns:1fr !important; }
         }
       `}</style>
 
@@ -166,7 +184,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             <div style={{ fontSize:26, fontWeight:800, letterSpacing:'-0.02em' }}>Welcome back, {client.contact.split(' ')[0]} 👋</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,0.32)', marginTop:6 }}>Here's your overview for March 2026</div>
           </div>
-          <div style={{ ...glass, background:`linear-gradient(135deg, ${accent}18 0%, rgba(255,255,255,0.04) 60%)`, border:`1px solid ${accent}35`, padding:'28px 32px', marginBottom:22 }}>
+          <div style={{ ...glass, background:`linear-gradient(135deg,${accent}18 0%,rgba(255,255,255,0.04) 60%)`, border:`1px solid ${accent}35`, padding:'28px 32px', marginBottom:22 }}>
             <div style={{ display:'flex', alignItems:'center', gap:40, flexWrap:'wrap' }}>
               <div>
                 <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', marginBottom:10 }}>Direct Bookings This Month</div>
@@ -194,10 +212,10 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
           </div>
           <div className="client-kpi-grid">
             {[
-              { label:'Content Delivered', value:client.contentDelivered, suffix:'',  color:'#fff',    sub:`of ${client.contentPlanned} planned` },
-              { label:'Avg Views / Content', value:Math.round(client.avgViews/100)/10, suffix:'K', color:accent, sub:'across all platforms' },
-              { label:'Website Sessions',  value:client.websiteTraffic,    suffix:'',  color:'#fff',    sub:`↑ +${trafficChange}% vs last month` },
-              { label:'Commission Saved',  value:client.commissionSaved,   prefix:'$', color:SUCCESS,   sub:'vs full OTA dependency' },
+              { label:'Content Delivered',  value:client.contentDelivered,              suffix:'',  color:'#fff',  sub:`of ${client.contentPlanned} planned` },
+              { label:'Avg Views / Content', value:Math.round(client.avgViews/100)/10,   suffix:'K', color:accent,  sub:'across all platforms' },
+              { label:'Website Sessions',   value:client.websiteTraffic,                suffix:'',  color:'#fff',  sub:`↑ +${trafficChange}% vs last month` },
+              { label:'Commission Saved',   value:client.commissionSaved,               prefix:'$', color:SUCCESS, sub:'vs full OTA dependency' },
             ].map((k,i) => (
               <div key={i} style={{ ...glass, padding:20 }}>
                 <div style={{ fontSize:10, fontWeight:500, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:12 }}>{k.label}</div>
@@ -207,7 +225,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             ))}
           </div>
           <div className="client-two-col">
-            <div style={{ ...glass, background:`linear-gradient(135deg, ${accent}0F 0%, rgba(255,255,255,0.03) 100%)`, border:`1px solid ${accent}28`, padding:24 }}>
+            <div style={{ ...glass, background:`linear-gradient(135deg,${accent}0F 0%,rgba(255,255,255,0.03) 100%)`, border:`1px solid ${accent}28`, padding:24 }}>
               <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:accent, marginBottom:16 }}>Next Shoot</div>
               <div style={{ display:'flex', alignItems:'center', gap:20, marginBottom:18 }}>
                 <div>
@@ -217,9 +235,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginBottom:6 }}>{client.shootTime}</div>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginBottom:12 }}>📍 {client.shootLocation}</div>
-                  <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${accent}18`, border:`1px solid ${accent}28`, borderRadius:10, padding:'5px 12px', fontSize:11, fontWeight:600, color:accent }}>
-                    ⏱ {client.daysUntil} days away
-                  </div>
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${accent}18`, border:`1px solid ${accent}28`, borderRadius:10, padding:'5px 12px', fontSize:11, fontWeight:600, color:accent }}>⏱ {client.daysUntil} days away</div>
                 </div>
               </div>
               <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:14 }}>
@@ -245,10 +261,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
                 </div>
               ))}
               <div style={{ padding:'14px 22px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                <button
-                  onClick={() => setTab('invoices')}
-                  style={{ width:'100%', background:`linear-gradient(145deg, ${accent}, ${accent}bb)`, border:'none', color:'#fff', padding:10, borderRadius:12, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, boxShadow:`0 4px 16px ${accent}40` }}
-                >
+                <button onClick={() => setTab('invoices')} style={{ width:'100%', background:`linear-gradient(145deg,${accent},${accent}bb)`, border:'none', color:'#fff', padding:10, borderRadius:12, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT, boxShadow:`0 4px 16px ${accent}40` }}>
                   View All Invoices →
                 </button>
               </div>
@@ -268,7 +281,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             <div className="client-content-grid">
               {content.map((v) => (
                 <div key={v.id} style={{ borderRadius:16, overflow:'hidden', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}>
-                  <div style={{ aspectRatio:'16/9', background:`linear-gradient(135deg, ${accent}12, rgba(255,255,255,0.02))`, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+                  <div style={{ aspectRatio:'16/9', background:`linear-gradient(135deg,${accent}12,rgba(255,255,255,0.02))`, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
                     <span style={{ fontSize:26, opacity:0.12 }}>▶</span>
                     <span style={{ position:'absolute', top:8, left:8, background:accent, color:'#fff', fontSize:7, fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase', padding:'3px 8px', borderRadius:7 }}>{v.tag}</span>
                     {v.hot && <span style={{ position:'absolute', top:8, right:8, background:`${accent}25`, color:accent, fontSize:9, fontWeight:600, padding:'3px 7px', borderRadius:7 }}>🔥</span>}
@@ -296,9 +309,9 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
           </div>
           <div className="perf-grid">
             {[
-              { label:'Direct Bookings', value:client.directBookings, suffix:'%', color:accent, trend:client.directTrend, sub:`↑ +${directChange}% vs last month` },
-              { label:'Website Sessions', value:client.websiteTraffic, suffix:'', color:SUCCESS, trend:client.trafficTrend, sub:`↑ +${trafficChange}% vs last month` },
-              { label:'OTA Dependency', value:100-client.directBookings, suffix:'%', color:WARNING, trend:client.otaTrend, sub:'decreasing — good trend' },
+              { label:'Direct Bookings',  value:client.directBookings,        suffix:'%', color:accent,   trend:client.directTrend,  sub:`↑ +${directChange}% vs last month` },
+              { label:'Website Sessions', value:client.websiteTraffic,        suffix:'',  color:SUCCESS,  trend:client.trafficTrend, sub:`↑ +${trafficChange}% vs last month` },
+              { label:'OTA Dependency',   value:100-client.directBookings,    suffix:'%', color:WARNING,  trend:client.otaTrend,     sub:'decreasing — good trend' },
             ].map((k,i) => (
               <div key={i} style={{ ...glass, padding:24 }}>
                 <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginBottom:10 }}>{k.label}</div>
@@ -312,7 +325,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
           </div>
           <div style={{ ...glass, padding:24 }}>
             <div style={{ fontSize:12, fontWeight:700, marginBottom:16 }}>Direct vs OTA — 6 Month Breakdown</div>
-            {client.directTrend.map((val, i) => {
+            {client.directTrend.map((val,i) => {
               const months = ['Oct','Nov','Dec','Jan','Feb','Mar'];
               return (
                 <div key={i} style={{ marginBottom:14 }}>
@@ -335,7 +348,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.02em' }}>Shoot Schedule</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,0.32)', marginTop:6 }}>{client.name}</div>
           </div>
-          <div style={{ ...glass, background:`linear-gradient(135deg, ${accent}0F 0%, rgba(255,255,255,0.03) 100%)`, border:`1px solid ${accent}28`, padding:32, marginBottom:20 }}>
+          <div style={{ ...glass, background:`linear-gradient(135deg,${accent}0F 0%,rgba(255,255,255,0.03) 100%)`, border:`1px solid ${accent}28`, padding:32, marginBottom:20 }}>
             <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:accent, marginBottom:20 }}>Next Scheduled Shoot</div>
             <div style={{ display:'flex', alignItems:'center', gap:32, flexWrap:'wrap' }}>
               <div>
@@ -387,9 +400,9 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:22 }}>
             {[
-              { label:'Total Paid',    value:invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amount,0),    prefix:'$', color:SUCCESS },
-              { label:'Outstanding',   value:invoices.filter(i=>i.status==='pending').reduce((s,i)=>s+i.amount,0), prefix:'$', color:WARNING },
-              { label:'Overdue',       value:invoices.filter(i=>i.status==='overdue').reduce((s,i)=>s+i.amount,0), prefix:'$', color:CORAL },
+              { label:'Total Paid',  value:invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amount,0),    prefix:'$', color:SUCCESS },
+              { label:'Outstanding', value:invoices.filter(i=>i.status==='pending').reduce((s,i)=>s+i.amount,0), prefix:'$', color:WARNING },
+              { label:'Overdue',     value:invoices.filter(i=>i.status==='overdue').reduce((s,i)=>s+i.amount,0), prefix:'$', color:CORAL },
             ].map((k,i) => (
               <div key={i} style={{ ...glass, padding:'18px 20px' }}>
                 <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:10 }}>{k.label}</div>
@@ -398,7 +411,7 @@ export default function ClientPortal({ clientId, defaultTab = 'dashboard' }) {
             ))}
           </div>
           <div style={{ ...glass, overflow:'hidden' }}>
-            {invoices.map((inv, i) => (
+            {invoices.map((inv,i) => (
               <InvoiceRow
                 key={inv.id}
                 inv={inv}
